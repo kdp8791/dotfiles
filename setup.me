@@ -1,0 +1,181 @@
+#! /bin/bash
+
+print_new() {
+	echo -e "---------------------------------\n${1}\n---------------------------------\n"
+}
+
+init() {
+	if [[ ! -d ~/.vim/autoload && ! -d ~/.vim/bundle ]]; then
+		# Copy dotfiles to ~/ folder and updating vim
+	  mkdir -p ~/.vim/autoload ~/.vim/bundle && curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+		git clone git://github.com/tpope/vim-sensible.git ~/.vim/bundle
+	fi
+	cp -f dots/.[a-z]* ~/
+	print_new "DOTFILES HAVE BEEN COPIED" 
+}
+
+# Function to determine if xcode is installed, if so, install command line tools.
+is_xcode_installed() {
+	# Check if Xcode is installed
+	is_xcode_installed=$(ls /Applications/ | grep -c Xcode)
+	if (($is_xcode_installed == 0)) ; then
+		print_new "XCODE NEEDS TO BE INSTALLED, OPENING APP STORE"
+		open macappstore://itunes.apple.com/us/app/xcode/id497799835?mt=12
+		exit 2
+	fi
+
+	# Install Xcode command-line tools
+	print_new "INSTALLING XCODE COMMAND-LINE TOOLS" 
+	sudo xcode-select --install	
+}
+
+# Function to install homebrew and updates
+install_homebrew() {
+	# Ask user if they want to install homebrew
+	read -p "Do you want to install homebrew? (Y/n): " homebrew
+	if [[ $homebrew =~ ^([yY][eE][sS]|[yY])$  ]]; then
+		is_xcode_installed
+		
+		# Install Homebrew
+		print_new "INSTALLING HOMEBREW" 
+		ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+		# Run brew update
+		print_new "UPDATING BREW"
+		brew update 
+
+		# Run brew doctor, check for issues
+		print_new "CHECKING FOR ISSUES"
+		brew doctor
+	fi
+}
+
+install_node() {
+	# Install node
+	print_new "INSTALLING NODE"
+	brew install node
+	sudo xcode-select -switch /usr/bin
+	npm install less --global
+}
+
+install_python() {
+	# Install python
+	print_new "INSTALLING PYTHON"
+	brew install python
+	pip install --upgrade distribute
+	pip install --upgrade pip
+}
+
+install_git() {
+	# Install git
+	print_new "INSTALLING GIT"
+	brew install git
+}
+
+install_ruby() {
+	# Install ruby
+	print_new "INSTALLING RUBY"
+	curl -L https://get.rvm.io | bash -s stable --ruby
+	is_ruby_installed=$(type rvm | head -1)
+	if (($is_ruby_installed -eq "rvm is a function")) ; then
+		print_new "RUBY WAS INSTALLED SUCCESSFULLY!"
+	else
+		print_new "AN ERROR OCCURRED WHEN INSTALLING RUBY!"
+	fi
+}
+
+install_sublime() {
+	# Download Subline and install
+	print_new "DOWNLOADING SUBLIME TEXT"
+	curl -O "http://c758482.r82.cf2.rackcdn.com/Sublime%20Text%20Build%203065.dmg"
+	print_new "MOUNTING SUBLIME TEXT"
+	sublime_volume=$(hdiutil attach "Sublime%20Text%20Build%203065.dmg")
+	print_new "INSTALLING SUBLIME TEXT"
+	cp -rf "/Volumes/Sublime Text/Sublime Text.app" /Applications
+	hdiutil detach "/Volumes/Sublime Text"
+	mkdir -p ~/bin
+	if [ ! -f ~/bin/subl ]; then
+		ln -s "/Applications/Sublime Text 3.app/Contents/SharedSupport/bin/subl" ~/bin/subl
+	fi
+	rm "Sublime%20Text%20Build%203065.dmg"
+}
+
+install_iterm() {
+	# Download iTerm2 and install
+	print_new "DOWNLOADING & INSTALLING ITERM2"
+	curl -O "https://iterm2.com/downloads/stable/iTerm2_v2_0.zip"
+	unzip iTerm2_v2_0.zip
+	mv iTerm.app /Applications
+	rm iTerm2_v2_0.zip
+}
+
+man() {
+	print_new "AVAILABLE INSTALLS\n[man|python|ruby|node|git|sublime|iterm|homebrew|exit]"
+}
+
+
+#### MAIN ####
+init 
+is_homebrew_installed=$(which brew)
+if [[ -z "${is_homebrew_installed}" ]]; then
+	install_homebrew
+fi
+
+man
+read -p "Install: " cmd
+while true; do
+	case $cmd in
+		"homebrew")
+			if [ -n "${is_homebrew_installed}" ]; then
+				install_homebrew
+			fi
+			read -p "Install: " cmd
+			;;
+		"python")
+			if [ -n "${is_homebrew_installed}" ]; then
+				install_python
+			else
+				install_homebrew
+			fi
+			read -p "Install: " cmd
+			;;
+		"node")
+			if [ -n "${is_homebrew_installed}" ]; then
+				install_node
+			else
+				install_homebrew
+			fi
+			read -p "Install: " cmd
+			;;	
+		"git")
+			if [ -n "${is_homebrew_installed}" ]; then
+				install_git
+			else
+				install_homebrew
+			fi
+			read -p "Install: " cmd
+			;;	
+		"ruby")
+			install_ruby
+			read -p "Install: " cmd
+			;;
+		"sublime")
+			install_sublime
+			read -p "Install: " cmd
+			;;
+		"iterm")
+			install_iterm
+			read -p "Install: " cmd
+			;;
+		"man")
+			man
+			read -p "Install: " cmd
+			;;
+		"exit")
+			exit 0
+			;;
+		*)
+			read -p "Install: " cmd
+			;;
+	esac
+done
